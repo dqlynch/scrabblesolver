@@ -8,7 +8,8 @@ from scrabble_dawg import ScrabbleDAWG
 from board import *
 
 
-def save_lex_dawg(dictionary_file='sowpods.txt', outfile='sowpods.dawg'):
+def save_lex_dawg(dictionary_file='dictionaries/sowpods.txt',
+                  outfile='dawgs/sowpods.dawg'):
     with open(dictionary_file, 'r') as f:
         words = []
         for line in f.readlines():
@@ -19,8 +20,8 @@ def save_lex_dawg(dictionary_file='sowpods.txt', outfile='sowpods.dawg'):
     completion_dawg.save(outfile)
 
 
-def load_lex_dawg(dictionary_file='sowpods.txt'):
-    dawg_file = dictionary_file.replace('.txt', '.dawg')
+def load_lex_dawg(dictionary_file='dictionaries/sowpods.txt'):
+    dawg_file = dictionary_file.replace('.txt', '.dawg').replace('dictionaries/', 'dawgs/')
     if not os.path.isfile(dawg_file):
         # Create dawg file
         save_lex_dawg(dictionary_file, dawg_file)
@@ -67,7 +68,7 @@ def generate_moves(board, rack, lex_dawg, anchor):
 
 
 def solve_board(board, rack):
-    lex_dawg = load_lex_dawg('basic.txt')
+    lex_dawg = load_lex_dawg('dictionaries/basic.txt')
 
     # TODO replace with all anchors
     a_i, a_j = 5, 8
@@ -94,7 +95,7 @@ if __name__ == '__main__':
     solve_board(board, rack)
 
     # XXX testing
-    #lex_dawg = load_lex_dawg('basic.txt')
+    #lex_dawg = load_lex_dawg('dictionaries/basic.txt')
     #for letter in lex_dawg.gen_possible_placements('ca', rack.letters, all_letters):
     #    print(letter)
 
