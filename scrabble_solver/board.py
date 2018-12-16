@@ -100,7 +100,7 @@ class Board:
 
             # Letter on this spot
             if self.board[i,j]:
-                valid_letters[j] = [self.board[i,j]]
+                valid_letters[j] = [self.board[i,j].lower()]
 
             # Nothing above or below
             elif (i-1 < 0 or not self.board[i-1,j]) \
@@ -110,22 +110,22 @@ class Board:
 
             # At top edge or nothing above, consider word below only
             elif i-1 < 0 or not self.board[i-1,j]:
-                word = self.get_word_below(i,j)
+                word = self.get_word_below(i,j).lower()
                 for letter in all_letters:
                     if letter + word in lex_dawg:
                         valid_letters[j].append(letter)
 
             # At bottom edge or nothing below, consider word above only
             elif i+1 == BOARD_LEN or not self.board[i+1, j]:
-                word = self.get_word_above(i,j)
+                word = self.get_word_above(i,j).lower()
                 for letter in all_letters:
                     if word + letter in lex_dawg:
                         valid_letters[j].append(letter)
 
             # Words both above and below
             else:
-                above = self.get_word_above(i,j)
-                below = self.get_word_below(i,j)
+                above = self.get_word_above(i,j).lower()
+                below = self.get_word_below(i,j).lower()
                 for letter in all_letters:
                     if above + letter + below in lex_dawg:
                         valid_letters[j].append(letter)
@@ -159,6 +159,7 @@ class Board:
         score = 0
         myword_score = 0
         myword_multiplier = 1
+        tiles_placed = 0
 
         # "add" word to board, count score
         while word:
@@ -168,6 +169,7 @@ class Board:
             # Get position multipliers
             letter_mult, word_mult = 1, 1
             if not self.board[i,j]:     # only count board multipliers for new
+                tiles_placed += 1
                 letter_mult = self.letter_multipliers[i,j]
                 word_mult = self.word_multipliers[i,j]
             myword_multiplier *= word_mult
@@ -194,6 +196,8 @@ class Board:
             word = word[:-1]
 
         score += myword_score * myword_multiplier
+        if tiles_placed == 7:
+            score += 35
 
         return score
 

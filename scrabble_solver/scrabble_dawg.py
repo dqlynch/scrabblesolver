@@ -95,6 +95,22 @@ class ScrabbleDAWG(dawg_python.CompletionDAWG):
             yield '', rack_ls
             return
 
+        # if tile is already placed, must take this letter, dont
+        # take one of our tiles
+        if placed[0]:
+            assert(len(row_valid_letters[0]) == 1)
+            letters, = _encode(row_valid_letters[0])
+            for next_index, ch in self._gen_possible_placements(index, letters):
+                print('PREFIX TILE PLACED ALREADY')
+                assert(len(row_valid_letters[0]) == 1)
+                for wordpart, remaining in self._gen_prefixes_with_length(
+                        next_index,
+                        rack_ls,
+                        row_valid_letters[1:],
+                        placed[1:]):
+                    yield ch + wordpart, remaining
+                return
+
         # find placeable letters
         letters = [ch for ch in rack_ls if ch in row_valid_letters[0]]
         if WILDCARD in rack_ls:
@@ -107,18 +123,6 @@ class ScrabbleDAWG(dawg_python.CompletionDAWG):
 
         # check valid first placement, prepend to rest of word
         for next_index, ch in self._gen_possible_placements(index, letters):
-            # if tile is already placed, don't take one of our tiles
-            if placed[0]:
-                #print('TILE PLACED')
-                assert(len(row_valid_letters[0]) == 1)
-                for wordpart, remaining in self._gen_prefixes_with_length(
-                        next_index,
-                        rack_ls,
-                        row_valid_letters[1:],
-                        placed[1:]):
-                    yield ch + wordpart, remaining
-                return
-
             # if wildcard present, split on using it or not
             if WILDCARD in rack_ls:
                 for wordpart, remaining in self._gen_prefixes_with_length(
@@ -153,11 +157,12 @@ class ScrabbleDAWG(dawg_python.CompletionDAWG):
                 continue
 
             # Generate possible prefixes with given length
-            #print('evaluating prefix length', length)
+            print('evaluating prefix length', length)
             #print('PLACED:', placed)
             letters, placed_s = row_valid_letters[-length:], placed[-length:]
             if length == 0:
                 letters, placed_s = [], []
+            print(letters)
             #print(placed_s)
             yield from self._gen_prefixes_with_length(
                 self.dct.ROOT,

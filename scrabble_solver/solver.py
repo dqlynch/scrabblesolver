@@ -69,7 +69,7 @@ def generate_moves(board, rack, lex_dawg, anchor, best_words):
             rack.letters,
             board.board[i,:j],
             row_valid_letters[:j]):
-        #print(f'prefix: "{prefix}"')
+        print(f'prefix: "{prefix}"')
 
         # Calculate right extensions for all left prefixes
         #print(f'\nextending {prefix} with letters: {remaining_left}')
@@ -137,3 +137,8 @@ if __name__ == '__main__':
         'dawgs/wwf.dawg')
     solve_board(board, rack, lex_dawg)
 
+    # XXX Testing only
+    #best_hwords = []
+    #i,j = 2, 7
+    #generate_moves(board, rack, lex_dawg, (i, j), best_hwords)
+    #print(best_hwords)
