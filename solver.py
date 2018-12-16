@@ -79,15 +79,15 @@ def generate_moves(board, rack, lex_dawg, anchor, best_words):
                 row_valid_letters[j:]):
 
             score = board.score_word(word, anchor, len(prefix))
+            wordpack = (word, anchor, prefix, score)
 
             if len(best_words) == NUM_BEST_WORDS:
                 best_words.sort(key=score_sorter)
-                if score > best_words[0][-1]:
+                if score > best_words[0][-1] and wordpack not in best_words:
                     best_words.pop(0)
-                    board.score_word(word, anchor, len(prefix))
-                    best_words.append((word, anchor, prefix, score))
+                    best_words.append(wordpack)
             else:
-                best_words.append((word, anchor, prefix, score))
+                best_words.append(wordpack)
 
     return best_words
 
@@ -131,13 +131,17 @@ if __name__ == '__main__':
     board.load('example_board')
     print(board)
 
-    rack = Rack('assrpa')
+    rack = Rack('nsgl?ra')
 
-    #lex_dawg = load_lex_dawg()
+    ex_dawg = load_lex_dawg()
     lex_dawg = load_lex_dawg(
         ('dictionaries/enable2k.txt', 'dictionaries/wwf_additions.txt'),
         'dawgs/wwf.dawg')
     solve_board(board, rack, lex_dawg)
+
+    #best_hwords = []
+    #generate_moves(board, rack, lex_dawg, (8, 3), best_hwords)
+    #print(best_hwords)
 
     # XXX testing
     #lex_dawg = load_lex_dawg('dictionaries/basic.txt')

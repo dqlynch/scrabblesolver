@@ -63,6 +63,7 @@ class ScrabbleDAWG(dawg_python.CompletionDAWG):
     def _gen_possible_placements(self, index, letters):
         """Generate possible letter placements after the given index."""
         # Check which letters are valid
+        letters = list(set(letters))        # remove duplicates
         for letter in letters:
             next_index = self.dct.follow_char(int_from_byte(letter), index)
             if next_index:
@@ -169,6 +170,7 @@ class ScrabbleDAWG(dawg_python.CompletionDAWG):
             )
 
     def _gen_right_extensions(self, index, rack_ls, row_valid_letters, placed):
+        #print(f'_gen call, index={index}')
         # If tile is placed, must use it before checking word
         if placed and placed[0]:
             assert(len(row_valid_letters[0]) == 1)
@@ -183,11 +185,13 @@ class ScrabbleDAWG(dawg_python.CompletionDAWG):
             return
 
         # Return any possible word if the next tile is open or wall
-        #print(f'right placed: {placed}')
-        if self._has_value(index) and (len(placed) < 2 or not placed[1]):
+        #print(f'right placed: {placed[1]}')
+        if self._has_value(index) and (len(placed) < 1 or not placed[0]):
+            #print('word found')
             yield '', rack_ls
 
         if not row_valid_letters:
+            #print('no space')
             # Out of space
             return
 
@@ -195,6 +199,7 @@ class ScrabbleDAWG(dawg_python.CompletionDAWG):
         letters = [ch for ch in rack_ls if ch in row_valid_letters[0]]
         if WILDCARD in rack_ls:
             letters = row_valid_letters[0]
+        #print(f'letters: {letters}')
         letters, = _encode(letters)
 
         if not rack_ls or not letters:
@@ -203,6 +208,8 @@ class ScrabbleDAWG(dawg_python.CompletionDAWG):
 
         # Attempt to place letter
         for next_index, ch in self._gen_possible_placements(index, letters):
+            #print(f'placing: {ch}, index={index}->{next_index}')
+            #print(f'{next_index} in?: {self._has_value(next_index)}')
             # if wildcard present, split on using it or not
             if WILDCARD in rack_ls:
                 for suffix, remaining in self._gen_right_extensions(
@@ -227,6 +234,8 @@ class ScrabbleDAWG(dawg_python.CompletionDAWG):
         """
         formatted_prefix = prefix
         prefix = prefix.lower()
+
+        #print(f'prefix: {prefix}')
 
 
         assert(len(row) == len(row_valid_letters))
@@ -253,6 +262,7 @@ class ScrabbleDAWG(dawg_python.CompletionDAWG):
                 index, rack_ls, row_valid_letters, placed):
             if not suffix:          # must have letter on anchor
                 continue
+            #print(f'gen suffix: {suffix}')
             yield formatted_prefix + suffix, remaining
 
 

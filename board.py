@@ -74,7 +74,7 @@ class Board:
         """Return the word below i, j on the board."""
         i += 1
         word = []
-        while self.board[i,j]:
+        while i < BOARD_LEN and self.board[i,j]:
             word.append(self.board[i,j])
             i += 1
         return ''.join(word)
@@ -83,7 +83,7 @@ class Board:
         """Return the word above i, j on the board."""
         i -= 1
         word = []
-        while self.board[i,j]:
+        while i > 0 and self.board[i,j]:
             word.insert(0, self.board[i,j])
             i -= 1
         return ''.join(word)
