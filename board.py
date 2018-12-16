@@ -38,7 +38,7 @@ class Board:
 
             [1,1,1,1,1,  1,  1,1,1,1,1],
             [1,1,1,1,1,  1,  1,1,1,1,1],
-            [3,1,1,1,1,  1,  3,1,1,1,1],
+            [3,1,1,1,1,  1,  1,1,1,1,3],
             [1,2,1,1,1,  2,  1,2,1,1,1],
             [1,1,3,1,1,  1,  1,1,3,1,1],
         ])
@@ -51,6 +51,20 @@ class Board:
             'u': 2, 'v': 5,  'w': 4, 'x': 8, 'y': 3,
             'z': 10
         }
+
+    def load(self, board_file):
+        with open(board_file,'r') as f:
+
+            i = 0
+            for line in f.readlines():
+                line = line.strip()
+                if not line:
+                    continue
+
+                for j, letter in enumerate(line.split()):
+                    self.board[i,j] = letter.replace('.', '')
+
+                i += 1
 
 
     def transpose(self):
@@ -138,6 +152,7 @@ class Board:
 
 
     def score_word(self, word, anchor, offset):
+        orig_word = word
         ai, aj = anchor
         aj -= offset
 
@@ -165,14 +180,17 @@ class Board:
             myword_score += letterscore
 
             # Get score for adjacent completed words
-            below = self.get_word_below(i, j)
-            above = self.get_word_above(i, j)
-            collat = self._score_existing_word(below) + \
-                     self._score_existing_word(above) + \
-                     letterscore
-            collat *= word_mult
+            if not self.board[i,j]:
+                below = self.get_word_below(i, j)
+                above = self.get_word_above(i, j)
+                if above or below:
+                    collat = self._score_existing_word(below) + \
+                             self._score_existing_word(above) + \
+                             letterscore
+                    collat *= word_mult
 
-            score += collat
+                    score += collat
+
             word = word[:-1]
 
         score += myword_score * myword_multiplier

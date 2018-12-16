@@ -81,7 +81,6 @@ def generate_moves(board, rack, lex_dawg, anchor, best_words):
             score = board.score_word(word, anchor, len(prefix))
 
             if len(best_words) == NUM_BEST_WORDS:
-                print(score)
                 best_words.sort(key=score_sorter)
                 if score > best_words[0][-1]:
                     best_words.pop(0)
@@ -123,25 +122,22 @@ def solve_board(board, rack, dictionary_file):
         print(f'\n-----{word}: {score}-----')
         print(new_board)
 
-    #for word, anchor, prefix, score in best_vwords:
-    #    new_board = board.transpose().add_word(word, anchor, len(prefix))
-    #    print(f'\n-----{word}: {score}-----')
-    #    print(new_board.transpose())
-
 
 if __name__ == '__main__':
     # Simple testing board
     board = Board()
-    board.board[5,3] = 'c'
-    board.board[5,4] = 'a'
-    board.board[5,5] = 't'
+    #board.board[5,3] = 'c'
+    #board.board[5,4] = 'a'
+    #board.board[5,5] = 't'
 
-    board.board[6,3] = 'a'
-    board.board[7,3] = 'r'
+    #board.board[6,3] = 'a'
+    #board.board[7,3] = 'r'
+
+    board.load('example_board')
 
     print(board)
 
-    rack = Rack('asc?tog')
+    rack = Rack('adoitt?')
 
     solve_board(board, rack, 'dictionaries/sowpods.txt')
 
