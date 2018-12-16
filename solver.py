@@ -15,23 +15,23 @@ def score_sorter(elt):
     return elt[-1]
 
 
-def save_lex_dawg(dictionary_file='dictionaries/sowpods.txt',
+def save_lex_dawg(dictionary_files=('dictionaries/sowpods.txt',),
                   outfile='dawgs/sowpods.dawg'):
-    with open(dictionary_file, 'r') as f:
-        words = []
-        for line in f.readlines():
-            word = line.strip()
-            words.append(word)
+    words = []
+    for dictionary_file in dictionary_files:
+        with open(dictionary_file, 'r') as f:
+            for line in f.readlines():
+                word = line.strip()
+                words.append(word)
 
     completion_dawg = CompletionDAWG(words)
     completion_dawg.save(outfile)
 
 
-def load_lex_dawg(dictionary_file='dictionaries/sowpods.txt'):
-    dawg_file = dictionary_file.replace('.txt', '.dawg').replace('dictionaries/', 'dawgs/')
+def load_lex_dawg(dictionary_files=('dictionaries/sowpods.txt',), dawg_file='dawgs/tmp.dawg'):
     if not os.path.isfile(dawg_file):
         # Create dawg file
-        save_lex_dawg(dictionary_file, dawg_file)
+        save_lex_dawg(dictionary_files, dawg_file)
 
     return ScrabbleDAWG().load(dawg_file)
 
@@ -92,12 +92,7 @@ def generate_moves(board, rack, lex_dawg, anchor, best_words):
     return best_words
 
 
-def solve_board(board, rack, dictionary_file):
-    lex_dawg = load_lex_dawg(dictionary_file)
-
-    # TODO replace with all anchors
-    #generate_moves(board, rack, lex_dawg, (4, 8))   # above O
-
+def solve_board(board, rack, lex_dawg):
     best_hwords = []
     for i, j in get_anchors(board):
         generate_moves(board, rack, lex_dawg, (i, j), best_hwords)
@@ -110,12 +105,12 @@ def solve_board(board, rack, dictionary_file):
     best_words.extend([(True,) + word for word in best_vwords])
     best_words.sort(key=score_sorter)
 
-    best_words = best_words[-NUM_BEST_WORDS:]
+    #best_words = best_words[-NUM_BEST_WORDS:]
 
     for transposed, word, anchor, prefix, score in best_words:
         new_board = None
         if transposed:
-            new_board = board.add_v_word(word, anchor, len(prefix))
+            new_board = board.add_v_word(word, anchor, len(prefix)).transpose()
         else:
             new_board = board.add_word(word, anchor, len(prefix))
 
@@ -134,12 +129,15 @@ if __name__ == '__main__':
     #board.board[7,3] = 'r'
 
     board.load('example_board')
-
     print(board)
 
-    rack = Rack('adoitt?')
+    rack = Rack('assrpa')
 
-    solve_board(board, rack, 'dictionaries/sowpods.txt')
+    #lex_dawg = load_lex_dawg()
+    lex_dawg = load_lex_dawg(
+        ('dictionaries/enable2k.txt', 'dictionaries/wwf_additions.txt'),
+        'dawgs/wwf.dawg')
+    solve_board(board, rack, lex_dawg)
 
     # XXX testing
     #lex_dawg = load_lex_dawg('dictionaries/basic.txt')
