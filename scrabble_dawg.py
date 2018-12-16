@@ -12,12 +12,11 @@ class ScrabbleDAWG(dawg_python.CompletionDAWG):
         super(ScrabbleDAWG, self).__init__(*args, **kwargs)
 
     def _get_index_from_prefix(self, prefix):
-        given = prefix
         index = self.dct.ROOT
         prefix, = _encode(prefix)
         for ch in prefix:
             index = self.dct.follow_char(int_from_byte(ch), index)
-            if not index:
+            if index is None:
                 return None
         return index
 
@@ -38,26 +37,24 @@ class ScrabbleDAWG(dawg_python.CompletionDAWG):
                                           prefix + [ch],
                                           remaining_letters)
 
-    def get_completions(self, prefix, letters):
+    def gen_completions(self, prefix, letters):
         """
         Returns all words that start with prefix and end in some permutation
         of one or more of letters.
         """
         # Encode all as utf8
-        prefix, letters = _encode(prefix, letters)
 
         completions = []
 
-        # traverse dawg along current prefix
         index = self._get_index_from_prefix(prefix)
-        if not index:
-            return completions
+        if index is None:
+            return
+
+        prefix, letters = _encode(prefix, letters)
 
         # Attempt traversing with remaining rack letters
         for word_bytes in self._complete(index, prefix, letters):
-            completions.append(byte_array_to_str(word_bytes))
-
-        return completions
+            yield byte_array_to_str(word_bytes)
 
 
     def _gen_possible_placements(self, index, letters):
@@ -81,7 +78,7 @@ class ScrabbleDAWG(dawg_python.CompletionDAWG):
 
         # Traverse current prefix
         index = self._get_index_from_prefix(prefix)
-        if not index:
+        if index is None:
             return []
 
         for _, ch in self._gen_possible_placements(index, letters):
