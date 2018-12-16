@@ -1,11 +1,19 @@
 import numpy as np
 import os
 from pprint import pprint
+import time
 
 from dawg import CompletionDAWG
 from scrabble_dawg import ScrabbleDAWG
 
 from board import *
+
+NUM_BEST_WORDS = 5
+
+
+def word_sorter(elt):
+    word, anchor, prefix = elt
+    return len(word)
 
 
 def save_lex_dawg(dictionary_file='dictionaries/sowpods.txt',
@@ -50,49 +58,79 @@ def get_anchors(board):
     return anchors
 
 
-def generate_moves(board, rack, lex_dawg, anchor):
+def generate_moves(board, rack, lex_dawg, anchor, best_words):
     """Generate all possible moves from a given anchor point"""
     # Calculate valid placements for row
     i, j = anchor
     row_valid_letters = board.get_row_valid_letters(lex_dawg, i)
 
     # Calculate all valid left prefixes
-    for prefix, remaining in lex_dawg.gen_valid_prefixes(
+    for prefix, remaining_left in lex_dawg.gen_valid_prefixes(
             rack.letters,
             board.board[i,:j],
-            row_valid_letters[:j]
-        ):
+            row_valid_letters[:j]):
+        #print(f'prefix: "{prefix}"')
+
         # Calculate right extensions for all left prefixes
-        print(f'extending {prefix} with letters: {remaining}')
+        #print(f'\nextending {prefix} with letters: {remaining_left}')
+        for word, remaining in lex_dawg.gen_right_extensions(
+                prefix,
+                remaining_left,
+                board.board[i,j:],
+                row_valid_letters[j:]):
+            new_board = board.add_word(word, anchor, len(prefix))
+
+            if len(best_words) == NUM_BEST_WORDS:
+                best_words.sort(key=word_sorter)
+                if len(word) > len(best_words[0][0]):
+                    best_words.pop(0)
+                    best_words.append((word, anchor, prefix))
+            else:
+                best_words.append((word, anchor, prefix))
+
+    return best_words
 
 
-
-def solve_board(board, rack):
-    lex_dawg = load_lex_dawg('dictionaries/basic.txt')
+def solve_board(board, rack, dictionary_file):
+    lex_dawg = load_lex_dawg(dictionary_file)
 
     # TODO replace with all anchors
-    a_i, a_j = 5, 8
-    generate_moves(board, rack, lex_dawg, (a_i, a_j))
+    #generate_moves(board, rack, lex_dawg, (4, 8))   # above O
+
+    best_hwords = []
+    for i, j in get_anchors(board):
+        generate_moves(board, rack, lex_dawg, (i, j), best_hwords)
+
+    best_vwords = []
+    for i, j in get_anchors(board.transpose()):
+        generate_moves(board.transpose(), rack, lex_dawg, (i, j), best_vwords)
+
+    #for word, anchor, prefix in best_hwords:
+    #    new_board = board.add_word(word, anchor, len(prefix))
+    #    print(f'\n-----{word.upper()}-----')
+    #    print(new_board)
+
+    for word, anchor, prefix in best_vwords:
+        new_board = board.transpose().add_word(word, anchor, len(prefix))
+        print(f'\n-----{word}-----')
+        print(new_board.transpose())
 
 
 if __name__ == '__main__':
     # Simple testing board
     board = Board()
-    board.board[5,5] = 'c'
-    board.board[5,6] = 'a'
-    board.board[5,7] = 'r'
+    board.board[5,3] = 'c'
+    board.board[5,4] = 'a'
+    board.board[5,5] = 't'
 
-    board.board[2,8] = 'c'
-    board.board[3,8] = 'a'
-    board.board[4,8] = 't'
+    board.board[6,3] = 'a'
+    board.board[7,3] = 'r'
 
-    board.board[7,0] = 'c'
-    board.board[9,0] = 't'
     print(board)
 
-    rack = Rack('atcse?r')
+    rack = Rack('asc?tog')
 
-    solve_board(board, rack)
+    solve_board(board, rack, 'dictionaries/basic.txt')
 
     # XXX testing
     #lex_dawg = load_lex_dawg('dictionaries/basic.txt')

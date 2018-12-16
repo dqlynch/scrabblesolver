@@ -9,7 +9,42 @@ class Board:
         if board is None:
             self.board = np.full((11, 11), '')
         else:
-            self.board = board
+            self.board = np.array(board)
+
+        self.letter_multipliers = np.array([
+            [3,1,1,1,1,  1,  1,1,1,1,3],
+            [1,1,1,1,1,  1,  1,1,1,1,1],
+            [1,1,3,1,2,  1,  2,1,3,1,1],
+            [1,1,1,3,1,  1,  1,3,1,1,1],
+            [1,1,2,1,1,  1,  1,1,2,1,1],
+
+            [1,1,1,1,1,  1,  1,1,1,1,1],
+
+            [1,1,2,1,1,  1,  1,1,2,1,1],
+            [1,1,1,3,1,  1,  1,3,1,1,1],
+            [1,1,3,1,2,  1,  2,1,3,1,1],
+            [1,1,1,1,1,  1,  1,1,1,1,1],
+            [3,1,1,1,1,  1,  1,1,1,1,3],
+        ])
+
+        self.word_multipliers = np.array([
+            [1,1,3,1,1,  1,  1,1,3,1,1],
+            [1,2,1,1,1,  2,  1,2,1,1,1],
+            [3,1,1,1,1,  1,  3,1,1,1,1],
+            [1,1,1,1,1,  1,  1,1,1,1,1],
+            [1,1,1,1,1,  1,  1,1,1,1,1],
+
+            [1,2,1,1,1,  1,  1,1,1,2,1],
+
+            [1,1,1,1,1,  1,  1,1,1,1,1],
+            [1,1,1,1,1,  1,  1,1,1,1,1],
+            [3,1,1,1,1,  1,  3,1,1,1,1],
+            [1,2,1,1,1,  2,  1,2,1,1,1],
+            [1,1,3,1,1,  1,  1,1,3,1,1],
+        ])
+
+        tile_scores = []
+
 
     def transpose(self):
         return Board(self.board.T)
@@ -76,23 +111,28 @@ class Board:
 
         return valid_letters
 
+    def add_word(self, word, anchor, offset):
+        """Returns a copy of self with the given word added."""
+        new_board = Board(self.board)
+        i, j = anchor
+        j -= offset
+        while word:
+            new_board.board[i, j + len(word)-1] = word[-1]
+            word = word[:-1]
+        return new_board
 
+    def score_word(self, word, anchor, offset):
+        score = 0
+
+        return score
 
     def __str__(self):
         """String representation. Fills all empty spots for better formatting."""
         board = np.array(
-            [[c if c else '.' for c in row] for row in self.board]
+            [[c.upper() if c else '.' for c in row] for row in self.board]
         )
         return str(board)
 
-        #self.letter_multipliers = np.array([
-        #    [3,1,1,1,1,1],
-        #    [1,1,1,1,1,1],
-        #    [1,1,3,1,2,1],
-        #    [1,1,1,3,1,1],
-        #    [1,1,2,1,1,1],
-        #    [1,1,1,1,1,1],
-        #])
 
 
 class Rack:
