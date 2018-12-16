@@ -8,12 +8,11 @@ from scrabble_dawg import ScrabbleDAWG
 
 from board import *
 
-NUM_BEST_WORDS = 5
+NUM_BEST_WORDS = 10
 
 
-def word_sorter(elt):
-    word, anchor, prefix = elt
-    return len(word)
+def score_sorter(elt):
+    return elt[-1]
 
 
 def save_lex_dawg(dictionary_file='dictionaries/sowpods.txt',
@@ -78,15 +77,18 @@ def generate_moves(board, rack, lex_dawg, anchor, best_words):
                 remaining_left,
                 board.board[i,j:],
                 row_valid_letters[j:]):
-            new_board = board.add_word(word, anchor, len(prefix))
+
+            score = board.score_word(word, anchor, len(prefix))
 
             if len(best_words) == NUM_BEST_WORDS:
-                best_words.sort(key=word_sorter)
-                if len(word) > len(best_words[0][0]):
+                print(score)
+                best_words.sort(key=score_sorter)
+                if score > best_words[0][-1]:
                     best_words.pop(0)
-                    best_words.append((word, anchor, prefix))
+                    board.score_word(word, anchor, len(prefix))
+                    best_words.append((word, anchor, prefix, score))
             else:
-                best_words.append((word, anchor, prefix))
+                best_words.append((word, anchor, prefix, score))
 
     return best_words
 
@@ -105,15 +107,26 @@ def solve_board(board, rack, dictionary_file):
     for i, j in get_anchors(board.transpose()):
         generate_moves(board.transpose(), rack, lex_dawg, (i, j), best_vwords)
 
-    #for word, anchor, prefix in best_hwords:
-    #    new_board = board.add_word(word, anchor, len(prefix))
-    #    print(f'\n-----{word.upper()}-----')
-    #    print(new_board)
+    best_words = [(False,) + word for word in best_hwords]
+    best_words.extend([(True,) + word for word in best_vwords])
+    best_words.sort(key=score_sorter)
 
-    for word, anchor, prefix in best_vwords:
-        new_board = board.transpose().add_word(word, anchor, len(prefix))
-        print(f'\n-----{word}-----')
-        print(new_board.transpose())
+    best_words = best_words[-NUM_BEST_WORDS:]
+
+    for transposed, word, anchor, prefix, score in best_words:
+        new_board = None
+        if transposed:
+            new_board = board.add_v_word(word, anchor, len(prefix))
+        else:
+            new_board = board.add_word(word, anchor, len(prefix))
+
+        print(f'\n-----{word}: {score}-----')
+        print(new_board)
+
+    #for word, anchor, prefix, score in best_vwords:
+    #    new_board = board.transpose().add_word(word, anchor, len(prefix))
+    #    print(f'\n-----{word}: {score}-----')
+    #    print(new_board.transpose())
 
 
 if __name__ == '__main__':
@@ -130,7 +143,7 @@ if __name__ == '__main__':
 
     rack = Rack('asc?tog')
 
-    solve_board(board, rack, 'dictionaries/basic.txt')
+    solve_board(board, rack, 'dictionaries/sowpods.txt')
 
     # XXX testing
     #lex_dawg = load_lex_dawg('dictionaries/basic.txt')

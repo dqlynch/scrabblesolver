@@ -43,7 +43,14 @@ class Board:
             [1,1,3,1,1,  1,  1,1,3,1,1],
         ])
 
-        tile_scores = []
+        self.tile_scores = {
+            'a': 1, 'b': 4,  'c': 4, 'd': 2, 'e': 1,
+            'f': 4, 'g': 3,  'h': 3, 'i': 1, 'j': 10,
+            'k': 5, 'l': 2,  'm': 4, 'n': 2, 'o': 1,
+            'p': 4, 'q': 10, 'r': 1, 's': 1, 't': 1,
+            'u': 2, 'v': 5,  'w': 4, 'x': 8, 'y': 3,
+            'z': 10
+        }
 
 
     def transpose(self):
@@ -121,15 +128,61 @@ class Board:
             word = word[:-1]
         return new_board
 
+    def add_v_word(self, word, anchor, offset):
+        """Same as add_word but for vertical (transposed) words."""
+        return self.transpose().add_word(word, anchor, offset)
+
+
+    def _score_existing_word(self, word):
+        return sum([self.tile_scores[letter] for letter in word if letter.islower()])
+
+
     def score_word(self, word, anchor, offset):
+        ai, aj = anchor
+        aj -= offset
+
         score = 0
+        myword_score = 0
+        myword_multiplier = 1
+
+        # "add" word to board, count score
+        while word:
+            i, j = ai, aj + len(word)-1         # position adding letter to
+            letter = word[-1]
+
+            # Get position multipliers
+            letter_mult, word_mult = 1, 1
+            if not self.board[i,j]:     # only count board multipliers for new
+                letter_mult = self.letter_multipliers[i,j]
+                word_mult = self.word_multipliers[i,j]
+            myword_multiplier *= word_mult
+
+            # Score of this individual letter
+            letterscore = 0
+            if letter.islower():        # only score non-blank tiles
+                letterscore = self.tile_scores[letter]*letter_mult
+
+            myword_score += letterscore
+
+            # Get score for adjacent completed words
+            below = self.get_word_below(i, j)
+            above = self.get_word_above(i, j)
+            collat = self._score_existing_word(below) + \
+                     self._score_existing_word(above) + \
+                     letterscore
+            collat *= word_mult
+
+            score += collat
+            word = word[:-1]
+
+        score += myword_score * myword_multiplier
 
         return score
 
     def __str__(self):
         """String representation. Fills all empty spots for better formatting."""
         board = np.array(
-            [[c.upper() if c else '.' for c in row] for row in self.board]
+            [[c if c else '.' for c in row] for row in self.board]
         )
         return str(board)
 
