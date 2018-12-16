@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import sys
 from pprint import pprint
 import time
 
@@ -119,33 +120,20 @@ def solve_board(board, rack, lex_dawg):
 
 
 if __name__ == '__main__':
-    # Simple testing board
+    if len(sys.argv) != 3:
+        print('USAGE: python3 solver.py <board_file> <letters>')
+    board_file = sys.argv[1].strip()
+    rack_ls = sys.argv[2].strip()
+
     board = Board()
-    #board.board[5,3] = 'c'
-    #board.board[5,4] = 'a'
-    #board.board[5,5] = 't'
-
-    #board.board[6,3] = 'a'
-    #board.board[7,3] = 'r'
-
-    board.load('example_board')
+    board.load(board_file)
     print(board)
 
-    rack = Rack('nsgl?ra')
+    rack = Rack(rack_ls)
 
-    ex_dawg = load_lex_dawg()
+    #lex_dawg = load_lex_dawg()
     lex_dawg = load_lex_dawg(
         ('dictionaries/enable2k.txt', 'dictionaries/wwf_additions.txt'),
         'dawgs/wwf.dawg')
     solve_board(board, rack, lex_dawg)
-
-    #best_hwords = []
-    #generate_moves(board, rack, lex_dawg, (8, 3), best_hwords)
-    #print(best_hwords)
-
-    # XXX testing
-    #lex_dawg = load_lex_dawg('dictionaries/basic.txt')
-    #for letter in lex_dawg.gen_possible_placements('ca', rack.letters, all_letters):
-    #    print(letter)
-
 
