@@ -13,6 +13,7 @@ NUM_BEST_WORDS = 10
 
 
 def score_sorter(elt):
+    """Scores word with (word, (starti, startj), score)"""
     return elt[-1]
 
 
@@ -65,11 +66,16 @@ def generate_moves(board, rack, lex_dawg, anchor, best_words):
     row_valid_letters = board.get_row_valid_letters(lex_dawg, i)
 
     # Calculate all valid left prefixes
+    prefixes = [prefix for prefix, _ in lex_dawg.gen_valid_prefixes(
+        rack.letters,
+        board.board[i,:j],
+        row_valid_letters[:j])]
+
     for prefix, remaining_left in lex_dawg.gen_valid_prefixes(
             rack.letters,
             board.board[i,:j],
             row_valid_letters[:j]):
-        print(f'prefix: "{prefix}"')
+        #print(f'prefix: "{prefix}"')
 
         # Calculate right extensions for all left prefixes
         #print(f'\nextending {prefix} with letters: {remaining_left}')
@@ -79,12 +85,12 @@ def generate_moves(board, rack, lex_dawg, anchor, best_words):
                 board.board[i,j:],
                 row_valid_letters[j:]):
 
-            score = board.score_word(word, anchor, len(prefix))
-            wordpack = (word, anchor, prefix, score)
+            score = board.score_word(word, (i, j-len(prefix)))
+            wordpack = (word, (i, j-len(prefix)), score)
 
             if len(best_words) == NUM_BEST_WORDS:
                 best_words.sort(key=score_sorter)
-                if score > best_words[0][-1] and wordpack not in best_words:
+                if score > best_words[0][-1]:
                     best_words.pop(0)
                     best_words.append(wordpack)
             else:
@@ -108,12 +114,12 @@ def solve_board(board, rack, lex_dawg):
 
     #best_words = best_words[-NUM_BEST_WORDS:]
 
-    for transposed, word, anchor, prefix, score in best_words:
+    for transposed, word, startpos, score in best_words:
         new_board = None
         if transposed:
-            new_board = board.add_v_word(word, anchor, len(prefix)).transpose()
+            new_board = board.add_v_word(word, startpos)
         else:
-            new_board = board.add_word(word, anchor, len(prefix))
+            new_board = board.add_word(word, startpos)
 
         print(f'\n-----{word}: {score}-----')
         print(new_board)
@@ -135,6 +141,11 @@ if __name__ == '__main__':
     lex_dawg = load_lex_dawg(
         ('dictionaries/enable2k.txt', 'dictionaries/wwf_additions.txt'),
         'dawgs/wwf.dawg')
+    #lex_dawg = load_lex_dawg(
+    #    ('dictionaries/enable2k.txt',
+    #     'dictionaries/wwf_additions.txt',
+    #     'dictionaries/sowpods.txt'),
+    #    'dawgs/combined.dawg')
     solve_board(board, rack, lex_dawg)
 
     # XXX Testing only

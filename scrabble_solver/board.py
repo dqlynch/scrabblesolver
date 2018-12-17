@@ -3,6 +3,7 @@ import numpy as np
 BOARD_LEN = 11
 
 all_letters = [l for l in 'abcdefghijklmnopqrstuvwxyz']
+WILDCARD = '?'
 
 class Board:
     def __init__(self, board=None):
@@ -49,8 +50,19 @@ class Board:
             'k': 5, 'l': 2,  'm': 4, 'n': 2, 'o': 1,
             'p': 4, 'q': 10, 'r': 1, 's': 1, 't': 1,
             'u': 2, 'v': 5,  'w': 4, 'x': 8, 'y': 3,
-            'z': 10
+            'z': 10, WILDCARD: 0,
         }
+
+        self.tile_bag = {
+            'a': 5, 'b': 1, 'c': 1, 'd': 2, 'e': 7,
+            'f': 1, 'g': 1, 'h': 1, 'i': 4, 'j': 1,
+            'k': 1, 'l': 2, 'm': 1, 'n': 2, 'o': 4,
+            'p': 1, 'q': 1, 'r': 2, 's': 4, 't': 2,
+            'u': 1, 'v': 1, 'w': 1, 'x': 1, 'y': 1,
+            'z': 1, WILDCARD: 2,
+        }
+
+        self.set_tile_bag()
 
     def load(self, board_file):
         with open(board_file,'r') as f:
@@ -63,8 +75,24 @@ class Board:
 
                 for j, letter in enumerate(line.split()):
                     self.board[i,j] = letter.replace('.', '')
-
                 i += 1
+        self.set_tile_bag()
+
+    def set_tile_bag(self):
+        for row in self.board:
+            for letter in row:
+                if letter:
+                    ch = letter if letter.islower() else WILDCARD
+                    self.tile_bag[ch] -= 1
+                    if self.tile_bag[ch] < 0:
+                        print(f"Too many of '{ch}' on board.")
+
+
+    def remove_rack_tiles(self, letters):
+        for letter in letters:
+            self.tile_bag[letter] -= 1
+            if self.tile_bag[letter] < 0:
+                print(f"Too many of '{letter}' on board.")
 
 
     def transpose(self):
@@ -132,29 +160,27 @@ class Board:
 
         return valid_letters
 
-    def add_word(self, word, anchor, offset):
+    def add_word(self, word, startpos):
         """Returns a copy of self with the given word added."""
         new_board = Board(self.board)
-        i, j = anchor
-        j -= offset
+        i, j = startpos
         while word:
             new_board.board[i, j + len(word)-1] = word[-1]
             word = word[:-1]
         return new_board
 
-    def add_v_word(self, word, anchor, offset):
+    def add_v_word(self, word, startpos):
         """Same as add_word but for vertical (transposed) words."""
-        return self.transpose().add_word(word, anchor, offset)
+        return self.transpose().add_word(word, startpos).transpose()
 
 
     def _score_existing_word(self, word):
         return sum([self.tile_scores[letter] for letter in word if letter.islower()])
 
 
-    def score_word(self, word, anchor, offset):
+    def score_word(self, word, startpos):
         orig_word = word
-        ai, aj = anchor
-        aj -= offset
+        ai, aj = startpos
 
         score = 0
         myword_score = 0
