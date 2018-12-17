@@ -8,7 +8,7 @@ WILDCARD = '?'
 class Board:
     def __init__(self, board=None):
         if board is None:
-            self.board = np.full((11, 11), '')
+            self.board = np.full((BOARD_LEN, BOARD_LEN), '')
         else:
             self.board = np.array(board)
 
@@ -44,6 +44,8 @@ class Board:
             [1,1,3,1,1,  1,  1,1,3,1,1],
         ])
 
+        self.row_valid_letters = [[]]*BOARD_LEN
+
         self.tile_scores = {
             'a': 1, 'b': 4,  'c': 4, 'd': 2, 'e': 1,
             'f': 4, 'g': 3,  'h': 3, 'i': 1, 'j': 10,
@@ -66,7 +68,6 @@ class Board:
 
     def load(self, board_file):
         with open(board_file,'r') as f:
-
             i = 0
             for line in f.readlines():
                 line = line.strip()
@@ -95,8 +96,12 @@ class Board:
                 print(f"Too many of '{letter}' on board.")
 
 
-    def transpose(self):
-        return Board(self.board.T)
+    def transpose(self, recalc=False, dawg=None):
+        tboard = Board(self.board.T)
+        if recalc:
+            tboard.calc_row_valid_letters(dawg)
+
+        return tboard
 
     def get_word_below(self, i, j):
         """Return the word below i, j on the board."""
@@ -158,20 +163,25 @@ class Board:
                     if above + letter + below in lex_dawg:
                         valid_letters[j].append(letter)
 
-        return valid_letters
+        return [''.join(l) for l in valid_letters]
 
-    def add_word(self, word, startpos):
+    def calc_row_valid_letters(self, lex_dawg):
+        for i, row in enumerate(self.board):
+            self.row_valid_letters[i] = self.get_row_valid_letters(lex_dawg, i)
+
+    def add_word(self, play):
         """Returns a copy of self with the given word added."""
+        word = play.word
+        i, j = play.i, play.j
         new_board = Board(self.board)
-        i, j = startpos
         while word:
             new_board.board[i, j + len(word)-1] = word[-1]
             word = word[:-1]
         return new_board
 
-    def add_v_word(self, word, startpos):
+    def add_v_word(self, play):
         """Same as add_word but for vertical (transposed) words."""
-        return self.transpose().add_word(word, startpos).transpose()
+        return self.transpose().add_word(play).transpose()
 
 
     def _score_existing_word(self, word):
@@ -235,10 +245,18 @@ class Board:
         return str(board)
 
 
-
 class Rack:
     def __init__(self, letters=''):
         self.letters = [c for c in letters]
 
     def __str__(self):
         return ''.join(self.letters)
+
+
+class Play :
+    def __init__(self, word, i, j, score, vertical=None):
+        self.word = word
+        self.i = i
+        self.j = j
+        self.score = score
+        self.vertical = vertical

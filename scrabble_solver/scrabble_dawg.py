@@ -246,19 +246,6 @@ class ScrabbleDAWG(dawg_python.CompletionDAWG):
         placed = [bool(c) for c in row]
         index = self._get_index_from_prefix(prefix)
 
-        # FIXME Special case right now for single letter adds
-        # FIXME likely double-counting some of these
-        # FIXME this is wrong
-        #if not prefix:
-        #    single_letters = [ch for ch in rack_ls if ch in row_valid_letters[0]]
-        #    if WILDCARD in rack_ls:
-        #        single_letters = row_valid_letters[0]
-        #    for ch in single_letters:
-        #        if WILDCARD in rack_ls:
-        #            yield ch.upper(), rack_ls.replace(WILDCARD, '', 1)
-        #        if ch in rack_ls:
-        #            yield ch, rack_ls.replace(ch, '', 1)
-
         # Generate right extensions from the given prefix
         for suffix, remaining in self._gen_right_extensions(
                 index, rack_ls, row_valid_letters, placed):

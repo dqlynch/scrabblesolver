@@ -12,9 +12,9 @@ from board import *
 NUM_BEST_WORDS = 10
 
 
-def score_sorter(elt):
-    """Scores word with (word, (starti, startj), score)"""
-    return elt[-1]
+def play_sorter(play):
+    """Sorts plays by score"""
+    return play.score
 
 
 def save_lex_dawg(dictionary_files=('dictionaries/sowpods.txt',),
@@ -56,6 +56,10 @@ def get_anchors(board):
                     if board.board[adj_i, adj_j]:
                         anchors.append((i,j))
                         break
+
+    # Add center tile as anchor if board empty
+    if not anchors:
+        anchors.append((BOARD_LEN//2, BOARD_LEN//2))
     return anchors
 
 
@@ -63,7 +67,7 @@ def generate_moves(board, rack, lex_dawg, anchor, best_words):
     """Generate all possible moves from a given anchor point"""
     # Calculate valid placements for row
     i, j = anchor
-    row_valid_letters = board.get_row_valid_letters(lex_dawg, i)
+    row_valid_letters = board.row_valid_letters[i]
 
     # Calculate all valid left prefixes
     prefixes = [prefix for prefix, _ in lex_dawg.gen_valid_prefixes(
@@ -86,42 +90,50 @@ def generate_moves(board, rack, lex_dawg, anchor, best_words):
                 row_valid_letters[j:]):
 
             score = board.score_word(word, (i, j-len(prefix)))
-            wordpack = (word, (i, j-len(prefix)), score)
+            play = Play(word=word, i=i, j=j-len(prefix), score=score)
 
             if len(best_words) == NUM_BEST_WORDS:
-                best_words.sort(key=score_sorter)
-                if score > best_words[0][-1]:
+                best_words.sort(key=play_sorter)
+                if score > best_words[0].score:
                     best_words.pop(0)
-                    best_words.append(wordpack)
+                    best_words.append(play)
             else:
-                best_words.append(wordpack)
+                best_words.append(play)
+
 
     return best_words
 
 
 def solve_board(board, rack, lex_dawg):
-    best_hwords = []
+    board.calc_row_valid_letters(lex_dawg)
+
+    best_hwords = [Play('', 0, 0, 0)]   # in case no plays available
     for i, j in get_anchors(board):
         generate_moves(board, rack, lex_dawg, (i, j), best_hwords)
 
-    best_vwords = []
-    for i, j in get_anchors(board.transpose()):
-        generate_moves(board.transpose(), rack, lex_dawg, (i, j), best_vwords)
+    best_vwords = [Play('', 0, 0, 0)]   # in case no plays available
+    tboard = board.transpose(recalc=True, dawg=lex_dawg)
+    for i, j in get_anchors(tboard):
+        generate_moves(tboard, rack, lex_dawg, (i, j), best_vwords)
 
-    best_words = [(False,) + word for word in best_hwords]
-    best_words.extend([(True,) + word for word in best_vwords])
-    best_words.sort(key=score_sorter)
+    for play in best_hwords:
+        play.vertical = False
+    for play in best_vwords:
+        play.vertical = True
+
+    best_words = best_hwords + best_vwords
+    best_words.sort(key=play_sorter)
 
     #best_words = best_words[-NUM_BEST_WORDS:]
 
-    for transposed, word, startpos, score in best_words:
+    for play in best_words:
         new_board = None
-        if transposed:
-            new_board = board.add_v_word(word, startpos)
+        if play.vertical:
+            new_board = board.add_v_word(play)
         else:
-            new_board = board.add_word(word, startpos)
+            new_board = board.add_word(play)
 
-        print(f'\n-----{word}: {score}-----')
+        print(f'\n-----{play.word}: {play.score}-----')
         print(new_board)
 
 
