@@ -104,7 +104,7 @@ def generate_moves(board, rack, lex_dawg, anchor, best_words):
     return best_words
 
 
-def solve_board(board, rack, lex_dawg):
+def solve_board(board, rack, lex_dawg, print_words=False):
     board.calc_row_valid_letters(lex_dawg)
 
     best_hwords = [Play('', 0, 0, 0)]   # in case no plays available
@@ -126,15 +126,61 @@ def solve_board(board, rack, lex_dawg):
 
     #best_words = best_words[-NUM_BEST_WORDS:]
 
-    for play in best_words:
-        new_board = None
-        if play.vertical:
-            new_board = board.add_v_word(play)
-        else:
+    if print_words:
+        for play in best_words:
             new_board = board.add_word(play)
 
-        print(f'\n-----{play.word}: {play.score}-----')
-        print(new_board)
+            print(f'\n-----{play.word}: {play.score}-----')
+            print(new_board)
+
+    return best_words
+
+
+def play_urself(lex_dawg):
+    highest_word = Play(0, 0, 0, 0)
+    while True:
+        board = Board()
+        rack0 = Rack()
+        rack1 = Rack()
+        rack0.draw_from_board(board)
+
+        rack1.draw_from_board(board)
+
+        scores = [0, 0]
+
+        turn = 0
+        while rack0.letters and rack1.letters:
+
+            rack = rack1 if turn else rack0
+            print(f'\n\nPLAYER {turn+1}: {"".join(rack.letters)}')
+
+            # just pick highest word as test
+            play = solve_board(board, rack, lex_dawg)[-1]
+            scores[turn] += play.score
+
+            if play.score > highest_word.score:
+                highest_word = play
+
+            # place and print word
+            board = board.add_word(play, rack=rack)
+            board.calc_row_valid_letters(lex_dawg)  # recalculate checksums
+
+            print(f'-----{play.word}: {play.score}-----')
+            print(board)
+            print(f"remaining: {''.join(board.get_remaining_tiles())}")
+
+            # draw new tiles
+            rack.draw_from_board(board)
+            turn = (turn + 1) % 2
+
+        scores[0] += board._score_existing_word(rack1.letters)
+        scores[1] += board._score_existing_word(rack0.letters)
+
+        print(f'PLAYER 1: {scores[0]}, PLAYER 2: {scores[1]}')
+        print(f'PLAYER {np.argmax(scores)+1} WINS!!!')
+        print(f'Highest word: {highest_word}')
+        time.sleep(1)
+
 
 
 if __name__ == '__main__':
@@ -158,7 +204,8 @@ if __name__ == '__main__':
     #     'dictionaries/wwf_additions.txt',
     #     'dictionaries/sowpods.txt'),
     #    'dawgs/combined.dawg')
-    solve_board(board, rack, lex_dawg)
+    #solve_board(board, rack, lex_dawg, print_words=True)
+    play_urself(lex_dawg)
 
     # XXX Testing only
     #best_hwords = []

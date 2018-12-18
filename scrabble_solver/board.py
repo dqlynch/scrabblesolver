@@ -1,12 +1,14 @@
 import numpy as np
+import copy
 
 BOARD_LEN = 11
+RACK_TILES = 7
 
 all_letters = [l for l in 'abcdefghijklmnopqrstuvwxyz']
 WILDCARD = '?'
 
 class Board:
-    def __init__(self, board=None):
+    def __init__(self, board=None, tile_bag=None):
         if board is None:
             self.board = np.full((BOARD_LEN, BOARD_LEN), '')
         else:
@@ -55,16 +57,19 @@ class Board:
             'z': 10, WILDCARD: 0,
         }
 
-        self.tile_bag = {
-            'a': 5, 'b': 1, 'c': 1, 'd': 2, 'e': 7,
-            'f': 1, 'g': 1, 'h': 1, 'i': 4, 'j': 1,
-            'k': 1, 'l': 2, 'm': 1, 'n': 2, 'o': 4,
-            'p': 1, 'q': 1, 'r': 2, 's': 4, 't': 2,
-            'u': 1, 'v': 1, 'w': 1, 'x': 1, 'y': 1,
-            'z': 1, WILDCARD: 2,
-        }
-
-        self.set_tile_bag()
+        if tile_bag is None:
+            self.tile_bag = {
+                'a': 5, 'b': 1, 'c': 1, 'd': 2, 'e': 7,
+                'f': 1, 'g': 1, 'h': 1, 'i': 4, 'j': 1,
+                'k': 1, 'l': 2, 'm': 1, 'n': 2, 'o': 4,
+                'p': 1, 'q': 1, 'r': 2, 's': 4, 't': 2,
+                'u': 1, 'v': 1, 'w': 1, 'x': 1, 'y': 1,
+                'z': 1, WILDCARD: 2,
+            }
+        else:
+            self.tile_bag = tile_bag
+            #print('COPIED TILE BAG')
+            #print(f"after copy: {''.join(self.get_remaining_tiles())}")
 
     def load(self, board_file):
         with open(board_file,'r') as f:
@@ -88,16 +93,30 @@ class Board:
                     if self.tile_bag[ch] < 0:
                         print(f"Too many of '{ch}' on board.")
 
+    def get_remaining_tiles(self):
+        remaining_tiles = []
+        for letter, num in self.tile_bag.items():
+            remaining_tiles.extend([letter]*num)
+        return remaining_tiles
 
-    def remove_rack_tiles(self, letters):
-        for letter in letters:
+    def draw_tiles(self, num_tiles):
+        #print(f'DRAWING {num_tiles} TILES')
+        remaining_tiles = self.get_remaining_tiles()
+        num_tiles = min((len(remaining_tiles), num_tiles))
+        if num_tiles == 0:
+            return []
+        #print(f"bemaining: {''.join(self.get_remaining_tiles())}")
+        sel = list(np.random.choice(remaining_tiles, num_tiles,replace=False))
+        for letter in sel:
+            #print(f'before: {self.tile_bag[letter]}')
             self.tile_bag[letter] -= 1
-            if self.tile_bag[letter] < 0:
-                print(f"Too many of '{letter}' on board.")
-
+            #print(f'after: {self.tile_bag[letter]}')
+            assert(self.tile_bag[letter] >= 0)
+        #print(f"aemaining: {''.join(self.get_remaining_tiles())}")
+        return sel
 
     def transpose(self, recalc=False, dawg=None):
-        tboard = Board(self.board.T)
+        tboard = Board(board=self.board.T, tile_bag=self.tile_bag)
         if recalc:
             tboard.calc_row_valid_letters(dawg)
 
@@ -169,20 +188,32 @@ class Board:
         for i, row in enumerate(self.board):
             self.row_valid_letters[i] = self.get_row_valid_letters(lex_dawg, i)
 
-    def add_word(self, play):
-        """Returns a copy of self with the given word added."""
+    def add_word(self, play, rack=None):
+        """
+        Returns a copy of self with the given word added.
+        If rack is given, removes the played letters from rack.
+        """
+        if play.vertical:
+            hplay = copy.copy(play)
+            hplay.vertical = False
+            return self.transpose().add_word(hplay, rack).transpose()
+        played_letters = []
+
         word = play.word
         i, j = play.i, play.j
-        new_board = Board(self.board)
+        new_board = Board(board=self.board, tile_bag=self.tile_bag)
+
         while word:
+            if not new_board.board[i, j+len(word)-1]:
+                played_letters.append(word[-1])
+
             new_board.board[i, j + len(word)-1] = word[-1]
             word = word[:-1]
+
+        if rack:
+            rack.remove_letters(played_letters)
+
         return new_board
-
-    def add_v_word(self, play):
-        """Same as add_word but for vertical (transposed) words."""
-        return self.transpose().add_word(play).transpose()
-
 
     def _score_existing_word(self, word):
         return sum([self.tile_scores[letter] for letter in word if letter.islower()])
@@ -252,6 +283,14 @@ class Rack:
     def __str__(self):
         return ''.join(self.letters)
 
+    def remove_letters(self, letters):
+        for letter in letters:
+            if letter.isupper():
+                letter = WILDCARD
+            self.letters.remove(letter)
+
+    def draw_from_board(self, board, max_tiles=RACK_TILES):
+        self.letters.extend(board.draw_tiles(max_tiles - len(self.letters)))
 
 class Play :
     def __init__(self, word, i, j, score, vertical=None):
@@ -260,3 +299,6 @@ class Play :
         self.j = j
         self.score = score
         self.vertical = vertical
+
+    def __str__(self):
+        return f'{self.word}: ({self.i},{self.j}), {self.score}pts'
