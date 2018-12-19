@@ -1,3 +1,4 @@
+import copy
 import numpy as np
 import cProfile
 import os
@@ -85,7 +86,6 @@ def generate_moves(board, rack, lex_dawg, anchor, best_words):
             rack.letters,
             board.board[i,:j],
             row_valid_letters[:j]):
-        #print(f'prefix: "{prefix}"')
 
         # Calculate right extensions for all left prefixes
         #print(f'\nextending {prefix} with letters: {remaining_left}')
@@ -113,11 +113,11 @@ def generate_moves(board, rack, lex_dawg, anchor, best_words):
 def solve_board(board, rack, lex_dawg, print_words=False):
     board.calc_row_valid_letters(lex_dawg)
 
-    best_hwords = [Play('', 0, 0, 0)]   # in case no plays available
+    best_hwords = [Play()]   # in case no plays available
     for i, j in get_anchors(board):
         generate_moves(board, rack, lex_dawg, (i, j), best_hwords)
 
-    best_vwords = [Play('', 0, 0, 0)]   # in case no plays available
+    best_vwords = [Play()]   # in case no plays available
     tboard = board.transpose(recalc=True, dawg=lex_dawg)
     for i, j in get_anchors(tboard):
         generate_moves(tboard, rack, lex_dawg, (i, j), best_vwords)
@@ -140,6 +140,55 @@ def solve_board(board, rack, lex_dawg, print_words=False):
             print(new_board)
 
     return best_words
+
+
+def _eval_endgame(lex_dawg, board, rack, opp_rack, depth):
+    #print(f'***evaluating endgame depth {depth}')
+    # No letters, no score possible
+    if not rack.letters:
+        return [(Play(), -1*board._score_existing_word(opp_rack.letters))]
+    if depth == 4:
+        return [(Play(), 0)]
+
+    # Return the score differential of best play - their best play diff
+    board = copy.copy(board)
+    rack = copy.copy(rack)
+
+    plays = solve_board(board, rack, lex_dawg, print_words=False)
+    plays.sort(key=play_sorter, reverse=True)
+    play = plays[-NUM_BEST_WORDS:]
+
+    best_play = None
+    for i, play in enumerate(plays):
+        print(f'Evaluating depth {depth}: play {i+1} of {len(plays)}')
+        # Subtract differential of opponents best play
+        scorediff = play.score
+        opp_best_play = _eval_endgame(lex_dawg, board,
+                                      opp_rack, rack, depth+1)
+        scorediff -= opp_best_play[0][-1]
+        if not best_play or scorediff > best_play[0][-1]:
+            best_play = [(play, scorediff)] + opp_best_play
+
+    return best_play
+
+
+
+def eval_endgame(board, rack, lex_dawg, print_words=False):
+    """
+    Perform a 2-ply adversarial search for the highest score
+    score differential over the 20 highest scoring words.
+    """
+    print('All tiles known, evaluating endgame...')
+
+    opp_rack = Rack()
+    opp_rack.draw_from_board(board)
+    assert(not board.get_remaining_tiles())
+
+    best_play = _eval_endgame(lex_dawg, board, rack, opp_rack, 0)
+    print(best_play)
+
+
+
 
 
 def play_urself(lex_dawg):
@@ -215,15 +264,21 @@ def solve_board_cli():
     except:
         pass
 
+    lex_dawg = load_lex_dawg(dictionary_files, dawg_file)
 
     board = Board()
     board.load(board_file)
 
     rack = Rack(rack_ls)
-    lex_dawg = load_lex_dawg(dictionary_files, dawg_file)
 
+    board.remove_letters(rack.letters)
     print(board)
     print(f'Solving board with letters: {rack}...')
+
+
+    #if len(board.get_remaining_tiles()) <= RACK_TILES:
+    #    eval_endgame(board, rack, lex_dawg, print_words=False)
+    #    return
 
     best_words = solve_board(board, rack, lex_dawg, print_words=True)
 

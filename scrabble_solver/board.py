@@ -93,6 +93,15 @@ class Board:
                     if self.tile_bag[ch] < 0:
                         print(f"Too many of '{ch}' on board.")
 
+    def remove_letters(self, letters):
+        for letter in letters:
+            if letter.isupper():
+                letter = WILDCARD
+            if self.tile_bag[letter] == 0:
+                print(f"Cannot remove '{letter}', no more in tile bag.'")
+            else:
+                self.tile_bag[letter] -= 1
+
     def get_remaining_tiles(self):
         remaining_tiles = []
         for letter, num in self.tile_bag.items():
@@ -293,12 +302,15 @@ class Rack:
         self.letters.extend(board.draw_tiles(max_tiles - len(self.letters)))
 
 class Play :
-    def __init__(self, word, i, j, score, vertical=None):
+    def __init__(self, word='', i=0, j=0, score=0, vertical=None):
         self.word = word
         self.i = i
         self.j = j
         self.score = score
         self.vertical = vertical
 
+    def __repr__(self):
+        return f'"{self.word}": ({self.i},{self.j}), {self.score}pts'
+
     def __str__(self):
-        return f'{self.word}: ({self.i},{self.j}), {self.score}pts'
+        return f'"{self.word}": ({self.i},{self.j}), {self.score}pts'
