@@ -1,15 +1,21 @@
 import numpy as np
+import cProfile
 import os
 import sys
 from pprint import pprint
 import time
 
 from dawg import CompletionDAWG
-from scrabble_dawg import ScrabbleDAWG
+from .scrabble_dawg import ScrabbleDAWG
 
-from board import *
+from .board import *
 
 NUM_BEST_WORDS = 10
+
+import os
+dirname = os.path.dirname(__file__)
+DICTS_PATH = os.path.join(dirname, 'dictionaries')
+DAWGS_PATH = os.path.join(dirname, 'dawgs')
 
 
 def play_sorter(play):
@@ -18,7 +24,7 @@ def play_sorter(play):
 
 
 def save_lex_dawg(dictionary_files=('dictionaries/sowpods.txt',),
-                  outfile='dawgs/sowpods.dawg'):
+                  outfile=DAWGS_PATH + 'sowpods.dawg'):
     words = []
     for dictionary_file in dictionary_files:
         with open(dictionary_file, 'r') as f:
@@ -30,7 +36,7 @@ def save_lex_dawg(dictionary_files=('dictionaries/sowpods.txt',),
     completion_dawg.save(outfile)
 
 
-def load_lex_dawg(dictionary_files=('dictionaries/sowpods.txt',), dawg_file='dawgs/tmp.dawg'):
+def load_lex_dawg(dictionary_files=('dictionaries/sowpods.txt',), dawg_file=DAWGS_PATH + 'tmp.dawg'):
     if not os.path.isfile(dawg_file):
         # Create dawg file
         save_lex_dawg(dictionary_files, dawg_file)
@@ -148,6 +154,7 @@ def play_urself(lex_dawg):
 
         scores = [0, 0]
 
+        played_last_turn = True
         turn = 0
         while rack0.letters and rack1.letters:
 
@@ -157,6 +164,9 @@ def play_urself(lex_dawg):
             # just pick highest word as test
             play = solve_board(board, rack, lex_dawg)[-1]
             scores[turn] += play.score
+
+            if not played_last_turn and not play.word:
+                break
 
             if play.score > highest_word.score:
                 highest_word = play
@@ -179,32 +189,60 @@ def play_urself(lex_dawg):
         print(f'PLAYER 1: {scores[0]}, PLAYER 2: {scores[1]}')
         print(f'PLAYER {np.argmax(scores)+1} WINS!!!')
         print(f'Highest word: {highest_word}')
+        return
         time.sleep(1)
 
 
+def solve_board_cli():
+    if len(sys.argv) < 3:
+        print('USAGE: wwfsolve <board_file> <letters> [<dictionary>]')
+        print(' - Available dictionaries: enable (default), sowpods, comb')
+        exit(0)
 
-if __name__ == '__main__':
-    if len(sys.argv) != 3:
-        print('USAGE: python3 solver.py <board_file> <letters>')
     board_file = sys.argv[1].strip()
     rack_ls = sys.argv[2].strip()
+    dictionary_files = (os.path.join(DICTS_PATH, 'enable2k.txt'),
+                        os.path.join(DICTS_PATH, 'wwf_additions.txt'))
+    dawg_file = os.path.join(DAWGS_PATH + 'wwf.dawg')
+    try:
+        dictionary = sys.argv[3]
+        if dictionary == 'sowpods':
+            dictionary_files = (os.path.join(DICTS_PATH, 'sowpods.txt'),)
+            dawg_file = os.path.join(DAWGS_PATH, 'sowpods.dawg')
+        if dictionary == 'comb':
+            dictionary_files += (os.path.join(DICTS_PATH, 'sowpods.txt'),)
+            dawg_file = os.path.join(DAWGS_PATH, 'combined.dawg')
+    except:
+        pass
+
 
     board = Board()
     board.load(board_file)
-    print(board)
 
     rack = Rack(rack_ls)
+    lex_dawg = load_lex_dawg(dictionary_files, dawg_file)
 
-    #lex_dawg = load_lex_dawg()
-    lex_dawg = load_lex_dawg(
-        ('dictionaries/enable2k.txt', 'dictionaries/wwf_additions.txt'),
-        'dawgs/wwf.dawg')
-    #lex_dawg = load_lex_dawg(
-    #    ('dictionaries/enable2k.txt',
-    #     'dictionaries/wwf_additions.txt',
-    #     'dictionaries/sowpods.txt'),
-    #    'dawgs/combined.dawg')
-    #solve_board(board, rack, lex_dawg, print_words=True)
+    print(board)
+    print(f'Solving board with letters: {rack}...')
+
+    best_words = solve_board(board, rack, lex_dawg, print_words=True)
+
+
+def main():
+    dictionary_files = (os.path.join(DICTS_PATH, 'enable2k.txt'),
+                        os.path.join(DICTS_PATH, 'wwf_additions.txt'))
+    dawg_file = os.path.join(DAWGS_PATH + 'wwf.dawg')
+
+    # sowpods
+    #dictionary_files = (os.path.join(DICTS_PATH, 'sowpods.txt'),)
+    #dawg_file = os.path.join(DAWGS_PATH, 'sowpods.dawg')
+
+    # combined
+    #dictionary_files += (os.path.join(DICTS_PATH, 'sowpods.txt'),)
+    #dawg_file = os.path.join(DAWGS_PATH, 'combined.dawg')
+
+    lex_dawg = load_lex_dawg(dictionary_files, dawg_file)
+
     play_urself(lex_dawg)
 
     # XXX Testing only

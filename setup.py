@@ -21,4 +21,10 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
+    entry_points={
+        'console_scripts': [
+            'wwfsolve = scrabble_solver.solver:solve_board_cli',
+			'wwftest = scrabble_solver.solver:main'
+        ]
+    }
 )

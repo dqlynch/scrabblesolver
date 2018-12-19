@@ -2,7 +2,7 @@ import dawg
 import dawg_python
 from dawg_python.compat import int_from_byte
 
-from board import *
+from .board import *
 
 class ScrabbleDAWG(dawg_python.CompletionDAWG):
     """
