@@ -3,7 +3,7 @@ a python scrabble solver (WIP) using a modified directed acyclic word graph (DAW
 
 Outputs a list of the 20 highest-scoring words possible given a words with friends (facebook messenger version) board, and a rack of any number of letters (including blanks). 
 
-to install, clone repo and run `pip install .` or `python3 setup.py develop`. Not yet released on pip.
+to install, clone repo and run `pip install -e .` or `python3 setup.py develop`. Not yet released on pip.
 
 `USAGE: wwfsolve <board_file> <letters> [<dictionary>]`
 
