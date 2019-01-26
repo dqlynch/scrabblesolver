@@ -6,6 +6,9 @@ import sys
 from pprint import pprint
 import time
 
+import itertools
+from multiprocessing import Pool
+
 from dawg import CompletionDAWG
 from .scrabble_dawg import ScrabbleDAWG
 
@@ -77,11 +80,6 @@ def generate_moves(board, rack, lex_dawg, anchor, best_words):
     row_valid_letters = board.row_valid_letters[i]
 
     # Calculate all valid left prefixes
-    prefixes = [prefix for prefix, _ in lex_dawg.gen_valid_prefixes(
-        rack.letters,
-        board.board[i,:j],
-        row_valid_letters[:j])]
-
     for prefix, remaining_left in lex_dawg.gen_valid_prefixes(
             rack.letters,
             board.board[i,:j],
@@ -111,17 +109,39 @@ def generate_moves(board, rack, lex_dawg, anchor, best_words):
 
 
 def solve_board(board, rack, lex_dawg, print_words=False):
+    pool = Pool()
+
     board.calc_row_valid_letters(lex_dawg)
 
-    best_hwords = [Play()]   # in case no plays available
-    for i, j in get_anchors(board):
-        generate_moves(board, rack, lex_dawg, (i, j), best_hwords)
+    # Horizontal plays
+    hargs = []
+    for anchor in get_anchors(board):
+        hargs.append(
+            (board, rack, lex_dawg, anchor, [])
+        )
 
-    best_vwords = [Play()]   # in case no plays available
+    best_hwords = [Play()]
+    best_hanchor_plays = pool.starmap(generate_moves, hargs, chunksize=1)
+
+    # Vertical plays
     tboard = board.transpose(recalc=True, dawg=lex_dawg)
-    for i, j in get_anchors(tboard):
-        generate_moves(tboard, rack, lex_dawg, (i, j), best_vwords)
+    vargs = []
+    for anchor in get_anchors(tboard):
+        vargs.append(
+            (tboard, rack, lex_dawg, anchor, [])
+        )
+    best_vwords = [Play()]
+    best_vanchor_plays = pool.starmap(generate_moves, vargs, chunksize=1)
 
+
+    # Flatten plays
+    for best_plays in best_hanchor_plays:
+        best_hwords.extend(best_plays)
+    for best_plays in best_vanchor_plays:
+        best_vwords.extend(best_plays)
+
+
+    # Concat plays
     for play in best_hwords:
         play.vertical = False
     for play in best_vwords:
@@ -147,7 +167,7 @@ def _eval_endgame(lex_dawg, board, rack, opp_rack, depth):
     # No letters, no score possible
     if not rack.letters:
         return [(Play(), -1*board._score_existing_word(opp_rack.letters))]
-    if depth == 4:
+    if depth == 3:
         return [(Play(), 0)]
 
     # Return the score differential of best play - their best play diff
@@ -156,11 +176,12 @@ def _eval_endgame(lex_dawg, board, rack, opp_rack, depth):
 
     plays = solve_board(board, rack, lex_dawg, print_words=False)
     plays.sort(key=play_sorter, reverse=True)
-    play = plays[-NUM_BEST_WORDS:]
+    plays = plays[-NUM_BEST_WORDS:]
 
     best_play = None
     for i, play in enumerate(plays):
-        print(f'Evaluating depth {depth}: play {i+1} of {len(plays)}')
+        if depth < 2:
+            print(f'Evaluating depth {depth}: play {i+1} of {len(plays)}')
         # Subtract differential of opponents best play
         scorediff = play.score
         opp_best_play = _eval_endgame(lex_dawg, board,
@@ -276,9 +297,9 @@ def solve_board_cli():
     print(f'Solving board with letters: {rack}...')
 
 
-    #if len(board.get_remaining_tiles()) <= RACK_TILES:
-    #    eval_endgame(board, rack, lex_dawg, print_words=False)
-    #    return
+    if len(board.get_remaining_tiles()) <= RACK_TILES:
+        eval_endgame(board, rack, lex_dawg, print_words=False)
+        return
 
     best_words = solve_board(board, rack, lex_dawg, print_words=True)
 

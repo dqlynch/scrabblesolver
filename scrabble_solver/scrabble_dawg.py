@@ -230,6 +230,9 @@ class ScrabbleDAWG(dawg_python.CompletionDAWG):
                     yield ch + suffix, remaining
 
     def gen_right_extensions(self, prefix, rack_ls, row, row_valid_letters):
+        #print(f'gen right called with prefix {prefix}')
+        #print(f'valid letters: {row_valid_letters}')
+        #print(f'row: {row}')
         """
         Generate all valid words starting with the given prefix on the given
         partial row.
@@ -247,12 +250,14 @@ class ScrabbleDAWG(dawg_python.CompletionDAWG):
         index = self._get_index_from_prefix(prefix)
 
         # Generate right extensions from the given prefix
+        extensions = []
         for suffix, remaining in self._gen_right_extensions(
                 index, rack_ls, row_valid_letters, placed):
             if not suffix:          # must have letter on anchor
                 continue
             #print(f'gen suffix: {suffix}')
-            yield formatted_prefix + suffix, remaining
+            extensions.append((formatted_prefix + suffix, remaining))
+        return extensions
 
 
 def byte_array_to_str(byte_array):
