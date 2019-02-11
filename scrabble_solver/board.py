@@ -310,7 +310,11 @@ class Play :
         self.vertical = vertical
 
     def __repr__(self):
+        if self.vertical:
+            return f'"{self.word}": ({self.j},{self.i}), {self.score}pts'
         return f'"{self.word}": ({self.i},{self.j}), {self.score}pts'
 
     def __str__(self):
+        if self.vertical:
+            return f'"{self.word}": ({self.j},{self.i}), {self.score}pts'
         return f'"{self.word}": ({self.i},{self.j}), {self.score}pts'

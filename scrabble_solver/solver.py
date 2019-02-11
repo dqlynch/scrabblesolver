@@ -176,16 +176,30 @@ def _eval_endgame(lex_dawg, board, rack, opp_rack, depth):
 
     plays = solve_board(board, rack, lex_dawg, print_words=False)
     plays.sort(key=play_sorter, reverse=True)
-    plays = plays[-NUM_BEST_WORDS:]
+    plays = plays[:NUM_BEST_WORDS]
 
     best_play = None
     for i, play in enumerate(plays):
-        if depth < 2:
+        if depth < 1:
             print(f'Evaluating depth {depth}: play {i+1} of {len(plays)}')
         # Subtract differential of opponents best play
         scorediff = play.score
-        opp_best_play = _eval_endgame(lex_dawg, board,
-                                      opp_rack, rack, depth+1)
+
+        next_rack = copy.copy(rack)
+
+        print()
+        print(board)
+        print(plays)
+        print(play.word)
+        print(next_rack)
+        next_board = None
+        if play.vertical:
+            next_board = board.add_word(play, next_rack)
+        else:
+            next_board = board.transpose().add_word(play, next_rack).transpose()
+
+        opp_best_play = _eval_endgame(lex_dawg, next_board,
+                                      opp_rack, next_rack, depth+1)
         scorediff -= opp_best_play[0][-1]
         if not best_play or scorediff > best_play[0][-1]:
             best_play = [(play, scorediff)] + opp_best_play
@@ -273,7 +287,7 @@ def solve_board_cli():
     rack_ls = sys.argv[2].strip()
     dictionary_files = (os.path.join(DICTS_PATH, 'enable2k.txt'),
                         os.path.join(DICTS_PATH, 'wwf_additions.txt'))
-    dawg_file = os.path.join(DAWGS_PATH + 'wwf.dawg')
+    dawg_file = os.path.join(DAWGS_PATH, 'wwf.dawg')
     try:
         dictionary = sys.argv[3]
         if dictionary == 'sowpods':
@@ -297,9 +311,10 @@ def solve_board_cli():
     print(f'Solving board with letters: {rack}...')
 
 
-    if len(board.get_remaining_tiles()) <= RACK_TILES:
-        eval_endgame(board, rack, lex_dawg, print_words=False)
-        return
+    # TODO fix/redo this
+    #if len(board.get_remaining_tiles()) <= RACK_TILES:
+    #    eval_endgame(board, rack, lex_dawg, print_words=False)
+    #    return
 
     best_words = solve_board(board, rack, lex_dawg, print_words=True)
 
