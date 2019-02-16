@@ -267198,7 +267198,6 @@ zloties
 zloty
 zlotych
 zlotys
-zo
 zoa
 zoaea
 zoaeae
@@ -267584,7 +267583,6 @@ zorinos
 zoris
 zorro
 zorros
-zos
 zoster
 zosters
 zouave

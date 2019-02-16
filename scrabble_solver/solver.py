@@ -15,6 +15,8 @@ from .scrabble_dawg import ScrabbleDAWG
 from .board import *
 
 NUM_BEST_WORDS = 10
+ENDGAME_WORDS = 7
+MAX_DEPTH = 3
 
 import os
 dirname = os.path.dirname(__file__)
@@ -26,17 +28,21 @@ def play_sorter(play):
     """Sorts plays by score"""
     return play.score
 
-
-def save_lex_dawg(dictionary_files=('dictionaries/sowpods.txt',),
-                  outfile=DAWGS_PATH + 'sowpods.dawg'):
+def get_words(dictionary_files):
     words = []
     for dictionary_file in dictionary_files:
         with open(dictionary_file, 'r') as f:
             for line in f.readlines():
                 word = line.strip()
                 words.append(word)
+    return list(set(words))
 
-    completion_dawg = CompletionDAWG(words)
+
+
+def save_lex_dawg(dictionary_files=('dictionaries/sowpods.txt',),
+                  outfile=DAWGS_PATH + 'sowpods.dawg'):
+
+    completion_dawg = CompletionDAWG(get_words(dictionary_files))
     completion_dawg.save(outfile)
 
 
@@ -94,7 +100,7 @@ def generate_moves(board, rack, lex_dawg, anchor, best_words):
                 row_valid_letters[j:]):
 
             score = board.score_word(word, (i, j-len(prefix)))
-            play = Play(word=word, i=i, j=j-len(prefix), score=score)
+            play = Play(word=word, i=i, j=j-len(prefix), score=score, remaining=remaining)
 
             if len(best_words) == NUM_BEST_WORDS:
                 best_words.sort(key=play_sorter)
@@ -106,6 +112,15 @@ def generate_moves(board, rack, lex_dawg, anchor, best_words):
 
 
     return best_words
+
+
+def remove_duplicates(ls):
+    out = []
+    for l in ls:
+        if l not in out:
+            out.append(l)
+    return out
+
 
 
 def solve_board(board, rack, lex_dawg, print_words=False):
@@ -159,15 +174,29 @@ def solve_board(board, rack, lex_dawg, print_words=False):
             print(f'\n-----{play.word}: {play.score}-----')
             print(new_board)
 
+    best_words = remove_duplicates(best_words)
     return best_words
+
+def _get_ending_plays(plays):
+    endings = [play for play in plays if play.remaining == '']
+
+    # remove endings from plays
+    for end in endings:
+        plays.remove(end)
+    return endings
+
+
+def _end_sorter(seq):
+    return seq[0][-1]
 
 
 def _eval_endgame(lex_dawg, board, rack, opp_rack, depth):
     #print(f'***evaluating endgame depth {depth}')
     # No letters, no score possible
-    if not rack.letters:
-        return [(Play(), -1*board._score_existing_word(opp_rack.letters))]
-    if depth == 3:
+    if not opp_rack.letters:
+        assert False, 'opp rack should return if empty, not get here'
+        #return [(Play(), -1*board._score_existing_word(rack.letters))]
+    if depth == MAX_DEPTH:
         return [(Play(), 0)]
 
     # Return the score differential of best play - their best play diff
@@ -175,54 +204,63 @@ def _eval_endgame(lex_dawg, board, rack, opp_rack, depth):
     rack = copy.copy(rack)
 
     plays = solve_board(board, rack, lex_dawg, print_words=False)
-    plays.sort(key=play_sorter, reverse=True)
-    plays = plays[:NUM_BEST_WORDS]
 
-    best_play = None
+    best_seqs = []
+
+    # Consider highest scoring ending play
+    ending_plays = _get_ending_plays(plays)
+    if ending_plays:
+        ending_plays.sort(key=play_sorter, reverse=True)
+        ending = ending_plays[0]
+        end_bonus = 2*board._score_existing_word(opp_rack.letters)
+        ending_seq = [
+            (ending, ending.score + end_bonus),
+            (Play(), -end_bonus)
+        ]
+        best_seqs.append(ending_seq)
+
+    plays.sort(key=play_sorter, reverse=True)
+    plays = plays[:ENDGAME_WORDS]
+
     for i, play in enumerate(plays):
         if depth < 1:
             print(f'Evaluating depth {depth}: play {i+1} of {len(plays)}')
         # Subtract differential of opponents best play
         scorediff = play.score
 
-        next_rack = copy.copy(rack)
+        next_rack = Rack(rack.letters)
+        next_board = board.add_word(play, next_rack)
 
-        print()
-        print(board)
-        print(plays)
-        print(play.word)
-        print(next_rack)
-        next_board = None
-        if play.vertical:
-            next_board = board.add_word(play, next_rack)
-        else:
-            next_board = board.transpose().add_word(play, next_rack).transpose()
-
-        opp_best_play = _eval_endgame(lex_dawg, next_board,
+        opp_best_seq = _eval_endgame(lex_dawg, next_board,
                                       opp_rack, next_rack, depth+1)
-        scorediff -= opp_best_play[0][-1]
-        if not best_play or scorediff > best_play[0][-1]:
-            best_play = [(play, scorediff)] + opp_best_play
 
-    return best_play
+        scorediff -= opp_best_seq[0][-1]
+        best_seqs.append([(play, scorediff)] + opp_best_seq)
+
+    # TODO make this shit not hideous
+    best_seqs.sort(key=_end_sorter, reverse=True)
+    if depth == 0:
+        return best_seqs
+    return best_seqs[0]
 
 
 
 def eval_endgame(board, rack, lex_dawg, print_words=False):
     """
     Perform a 2-ply adversarial search for the highest score
-    score differential over the 20 highest scoring words.
+    score differential over the X highest scoring words.
     """
     print('All tiles known, evaluating endgame...')
 
     opp_rack = Rack()
     opp_rack.draw_from_board(board)
+    print(f'Oppenent rack: {opp_rack}')
     assert(not board.get_remaining_tiles())
 
-    best_play = _eval_endgame(lex_dawg, board, rack, opp_rack, 0)
-    print(best_play)
-
-
+    best_plays = _eval_endgame(lex_dawg, board, rack, opp_rack, 0)
+    for plays in best_plays:
+        print()
+        print(plays)
 
 
 
@@ -311,10 +349,10 @@ def solve_board_cli():
     print(f'Solving board with letters: {rack}...')
 
 
-    # TODO fix/redo this
-    #if len(board.get_remaining_tiles()) <= RACK_TILES:
-    #    eval_endgame(board, rack, lex_dawg, print_words=False)
-    #    return
+    # TODO XXX fix/redo this
+    if len(board.get_remaining_tiles()) <= RACK_TILES:
+        eval_endgame(board, rack, lex_dawg, print_words=False)
+        return
 
     best_words = solve_board(board, rack, lex_dawg, print_words=True)
 

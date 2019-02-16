@@ -215,8 +215,8 @@ class Board:
         while word:
             if not new_board.board[i, j+len(word)-1]:
                 played_letters.append(word[-1])
+                new_board.board[i, j + len(word)-1] = word[-1]
 
-            new_board.board[i, j + len(word)-1] = word[-1]
             word = word[:-1]
 
         if rack:
@@ -248,6 +248,8 @@ class Board:
                 tiles_placed += 1
                 letter_mult = self.letter_multipliers[i,j]
                 word_mult = self.word_multipliers[i,j]
+            else:
+                letter = self.board[i,j]
             myword_multiplier *= word_mult
 
             # Score of this individual letter
@@ -302,12 +304,21 @@ class Rack:
         self.letters.extend(board.draw_tiles(max_tiles - len(self.letters)))
 
 class Play :
-    def __init__(self, word='', i=0, j=0, score=0, vertical=None):
+    def __init__(self, word='', i=0, j=0, score=0, vertical=None, remaining=None):
         self.word = word
         self.i = i
         self.j = j
         self.score = score
         self.vertical = vertical
+
+        self.remaining = remaining
+
+    def __eq__(self, other):
+        return (self.word == other.word and
+                self.i == other.i and
+                self.j == other.j and
+                self.score == other.score and
+                self.vertical == other.vertical)
 
     def __repr__(self):
         if self.vertical:

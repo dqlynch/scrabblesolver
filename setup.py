@@ -24,7 +24,8 @@ setuptools.setup(
     entry_points={
         'console_scripts': [
             'wwfsolve = scrabble_solver.solver:solve_board_cli',
-			'wwftest = scrabble_solver.solver:main'
+			'wwftest = scrabble_solver.solver:main',
+            'perm_count = scrabble_solver.perm_count:main'
         ]
     }
 )
